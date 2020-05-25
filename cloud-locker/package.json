@@ -1,0 +1,13 @@
+{
+ "name": "cloud-locker-authenticator",
+ "version": "1.0.0",
+ "description": "",
+ "author": "Sefi Genis",
+ "license": "ISC",
+ "dependencies": {
+  "aws-sdk": "^2.668.0",
+  "lodash": "^4.17.15",
+  "moment": "^2.25.1",
+  "oauth2-server": "^3.0.1"
+ }
+}

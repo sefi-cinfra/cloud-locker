@@ -1,0 +1,455 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Resources: 
+
+  #Dynamo tables
+  clientsDBTable: 
+    Type: AWS::DynamoDB::Table
+    Properties: 
+      AttributeDefinitions: 
+        - 
+          AttributeName: "ClientId"
+          AttributeType: "S"
+    
+      KeySchema:
+        - 
+          AttributeName: "ClientId"
+          KeyType: "HASH"
+
+      ProvisionedThroughput: 
+        ReadCapacityUnits: "5"
+        WriteCapacityUnits: "5"
+
+      TableName: "cloud-locker-clients"
+
+  tokensDBTable: 
+    Type: AWS::DynamoDB::Table
+    Properties:
+        AttributeDefinitions: 
+            -
+                AttributeName: "AccessToken"
+                AttributeType: "S"
+        KeySchema:
+            - 
+                AttributeName: "AccessToken"
+                KeyType: "HASH"
+
+        ProvisionedThroughput: 
+            ReadCapacityUnits: "5"
+            WriteCapacityUnits: "5"
+
+        TableName: "cloud-locker-tokens"
+
+  dynamicsAccessDBTable: 
+    Type: AWS::DynamoDB::Table
+    Properties: 
+        AttributeDefinitions: 
+            - 
+                AttributeName: "Id"
+                AttributeType: "S"
+
+        KeySchema: 
+            - 
+                AttributeName: "Id"
+                KeyType: "HASH"
+
+        ProvisionedThroughput: 
+            ReadCapacityUnits: "5"
+            WriteCapacityUnits: "5"
+
+        TableName: "cloud-locker-dynamic-access"
+
+  ##### Create Oauth Client ####
+  CreateOauthClientPolicy:
+    Type: 'AWS::IAM::ManagedPolicy'
+    Properties:
+      PolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Action:
+              - 'dynamodb:*'
+            Resource:
+              "Fn::GetAtt":  ["clientsDBTable", "Arn" ]
+
+          - Effect: Allow
+            Action:
+              - 'logs:*'
+            Resource:
+              - 'arn:aws:logs:*:*:*'
+
+          - Effect: Allow
+            Action:
+              - 's3:GetObject'
+              - 's3:PutObject'
+            Resource:
+              - 'arn:aws:s3:::*'
+
+
+  CreateOauthClientRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName:
+        Fn::Sub: CloudLocker_CreateOauthClient
+      AssumeRolePolicyDocument:
+        Statement:
+          - Action:
+            - sts:AssumeRole
+            Effect: Allow
+            Principal:
+              Service:
+              - lambda.amazonaws.com
+        Version: 2012-10-17
+      ManagedPolicyArns:
+        - !Ref CreateOauthClientPolicy
+
+  CreateOauthClientFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName:
+        Fn::Sub: CloudLocker_CreateOauthClient
+      Description: Create OAuth client
+      Runtime: nodejs12.x
+      Code:
+        ZipFile:
+          "exports.handler = function(event, context){\n
+            var sample = sample;"
+
+      Handler: src/create-client-handler.handler
+      MemorySize: 128
+      Timeout: 30
+      Role:
+        "Fn::GetAtt":  ["CreateOauthClientRole", "Arn" ]
+
+  ##### Create Oauth Token ####
+  CreateOauthTokenPolicy:
+    Type: 'AWS::IAM::ManagedPolicy'
+    Properties:
+      PolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Action:
+              - 'dynamodb:*'
+            Resource:
+              "Fn::GetAtt":  ["clientsDBTable", "Arn" ]
+              "Fn::GetAtt":  ["tokensDBTable", "Arn" ]
+
+          - Effect: Allow
+            Action:
+              - 'logs:*'
+            Resource:
+              - 'arn:aws:logs:*:*:*'
+
+          - Effect: Allow
+            Action:
+              - 's3:GetObject'
+              - 's3:PutObject'
+            Resource:
+              - 'arn:aws:s3:::*'
+
+
+  CreateOauthTokenRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName:
+        Fn::Sub: CloudLocker_CreateOauthToken
+      AssumeRolePolicyDocument:
+        Statement:
+          - Action:
+            - sts:AssumeRole
+            Effect: Allow
+            Principal:
+              Service:
+              - lambda.amazonaws.com
+        Version: 2012-10-17
+      ManagedPolicyArns:
+        - !Ref CreateOauthTokenPolicy
+
+  CreateOauthTokenFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName:
+        Fn::Sub: CloudLocker_CreateOauthToken
+      Description: Create OAuth token
+      Runtime: nodejs12.x
+      Code:
+        ZipFile:
+          "exports.handler = function(event, context){\n
+            var sample = sample;"
+      Handler: src/create-token-handler.handler
+      MemorySize: 128
+      Timeout: 30
+      Role:
+        "Fn::GetAtt":  ["CreateOauthTokenRole", "Arn" ]
+
+
+##### Get all Security-Groups ####
+  GetAllSecurityGroupsPolicy:
+    Type: 'AWS::IAM::ManagedPolicy'
+    Properties:
+      PolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Action:
+              - 'dynamodb:*'
+            Resource:
+              "Fn::GetAtt":  ["tokensDBTable", "Arn" ]
+
+          - Effect: Allow
+            Action:
+              - 'ec2:describeRegions'
+              - 'ec2:describeSecurityGroups'
+            Resource:
+              "*"
+
+          - Effect: Allow
+            Action:
+              - 'logs:*'
+            Resource:
+              - 'arn:aws:logs:*:*:*'
+
+          - Effect: Allow
+            Action:
+              - 's3:GetObject'
+              - 's3:PutObject'
+            Resource:
+              - 'arn:aws:s3:::*'
+
+
+  GetAllSecurityGroupsRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName:
+        Fn::Sub: CloudLocker_GetAllSecurityGroups
+      AssumeRolePolicyDocument:
+        Statement:
+          - Action:
+            - sts:AssumeRole
+            Effect: Allow
+            Principal:
+              Service:
+              - lambda.amazonaws.com
+        Version: 2012-10-17
+      ManagedPolicyArns:
+        - !Ref GetAllSecurityGroupsPolicy
+
+  GetAllSecurityGroupsFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName:
+        Fn::Sub: CloudLocker_GetAllSecurityGroups
+      Description: Get all Security-Groups
+      Runtime: nodejs12.x
+      Code:
+        ZipFile:
+          "exports.handler = function(event, context){\n
+            var sample = sample;"
+      Handler: src/get-all-security-groups-handler.handler
+      MemorySize: 128
+      Timeout: 30
+      Role:
+        "Fn::GetAtt":  ["GetAllSecurityGroupsRole", "Arn" ]
+
+##### Access TTL ####
+  AccessTTLPolicy:
+    Type: 'AWS::IAM::ManagedPolicy'
+    Properties:
+      PolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Action:
+              - 'dynamodb:*'
+            Resource:
+              "Fn::GetAtt":  ["tokensDBTable", "Arn" ]
+              "Fn::GetAtt":  ["dynamicsAccessDBTable", "Arn" ]
+
+          - Effect: Allow
+            Action:
+              - 'ec2:describeSecurityGroups'
+              - 'ec2:revokeSecurityGroupIngress'
+            Resource:
+              "*"
+
+          - Effect: Allow
+            Action:
+              - 'logs:*'
+            Resource:
+              - 'arn:aws:logs:*:*:*'
+
+          - Effect: Allow
+            Action:
+              - 's3:GetObject'
+              - 's3:PutObject'
+            Resource:
+              - 'arn:aws:s3:::*'
+
+
+  AccessTTLRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName:
+        Fn::Sub: CloudLocker_AccessTTL
+      AssumeRolePolicyDocument:
+        Statement:
+          - Action:
+            - sts:AssumeRole
+            Effect: Allow
+            Principal:
+              Service:
+              - lambda.amazonaws.com
+        Version: 2012-10-17
+      ManagedPolicyArns:
+        - !Ref AccessTTLPolicy
+
+  AccessTTLFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName:
+        Fn::Sub: CloudLocker_AccessTTL
+      Description: Access TTL
+      Runtime: nodejs12.x
+      Code:
+        ZipFile:
+          "exports.handler = function(event, context){\n
+            var sample = sample;"
+      Handler: src/access-ttl-handler.handler
+      MemorySize: 128
+      Timeout: 30
+      Role:
+        "Fn::GetAtt":  ["AccessTTLRole", "Arn" ]
+
+
+  AccessTTLScheduledRule: 
+    Type: AWS::Events::Rule
+    Properties: 
+      Description: "AccessTTLRule"
+      ScheduleExpression: "rate(1 minute)"
+      State: "ENABLED"
+      Targets: 
+        - 
+          Arn: 
+            Fn::GetAtt: 
+              - "AccessTTLFunction"
+              - "Arn"
+          Id: "TargetFunctionV1"
+  AccessTTLPermissionForEventsToInvokeLambda: 
+    Type: AWS::Lambda::Permission
+    Properties: 
+      FunctionName: 
+        Ref: "AccessTTLFunction"
+      Action: "lambda:InvokeFunction"
+      Principal: "events.amazonaws.com"
+      SourceArn: 
+        Fn::GetAtt: 
+          - "AccessTTLScheduledRule"
+          - "Arn"
+
+
+##### Open Temporary access ####
+  OpenTempAccessPolicy:
+    Type: 'AWS::IAM::ManagedPolicy'
+    Properties:
+      PolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Action:
+              - 'dynamodb:*'
+            Resource:
+              "Fn::GetAtt":  ["tokensDBTable", "Arn" ]
+              "Fn::GetAtt":  ["dynamicsAccessDBTable", "Arn" ]
+
+          - Effect: Allow
+            Action:
+              - 'ec2:describeSecurityGroups'
+              - 'ec2:authorizeSecurityGroupIngress'
+            Resource:
+              "*"
+
+          - Effect: Allow
+            Action:
+              - 'logs:*'
+            Resource:
+              - 'arn:aws:logs:*:*:*'
+
+          - Effect: Allow
+            Action:
+              - 's3:GetObject'
+              - 's3:PutObject'
+            Resource:
+              - 'arn:aws:s3:::*'
+
+
+  OpenTempAccessRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName:
+        Fn::Sub: CloudLocker_OpenTempAccess
+      AssumeRolePolicyDocument:
+        Statement:
+          - Action:
+            - sts:AssumeRole
+            Effect: Allow
+            Principal:
+              Service:
+              - lambda.amazonaws.com
+        Version: 2012-10-17
+      ManagedPolicyArns:
+        - !Ref OpenTempAccessPolicy
+
+  OpenTempAccessFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName:
+        Fn::Sub: CloudLocker_OpenTempAccess
+      Description: Open temporary access
+      Runtime: nodejs12.x
+      Code:
+        ZipFile:
+          "exports.handler = function(event, context){\n
+            var sample = sample;"
+      Handler: src/open-temp-access-handler.handler
+      MemorySize: 128
+      Timeout: 30
+      Role:
+        "Fn::GetAtt":  ["OpenTempAccessRole", "Arn" ]
+
+###### API Gateway #####
+  ApiGateway:
+    Type: "AWS::ApiGateway::RestApi"
+    Properties:
+      Name: "cloud-locker"
+      Description: "Cloud locker API"
+
+
+  CreateTokenApi:
+    Type: "AWS::ApiGateway::Method"
+    Properties:
+      AuthorizationType: "NONE"
+      HttpMethod: "POST"
+      Integration:
+        IntegrationHttpMethod: "POST"
+        Type: "AWS_PROXY"
+        Uri: !Sub
+          - "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${lambdaArn}/invocations"
+          - lambdaArn: !GetAtt "CreateOauthTokenFunction.Arn"
+      ResourceId: !GetAtt "ApiGateway.RootResourceId"
+      RestApiId: !Ref "ApiGateway"
+
+  # CreateTokenApiGatewayDeployment:
+  #   Type: "AWS::ApiGateway::Deployment"
+  #   DependsOn:
+  #     - "CreateTokenApi"
+  #   Properties:
+  #     RestApiId: !Ref "ApiGateway"
+  #     StageName: "cloud-locker"
+
+  # CreateTokenApiGatewayInvoke:
+  #   Type: "AWS::Lambda::Permission"
+  #   Properties:
+  #     Action: "lambda:InvokeFunction"
+  #     FunctionName: !GetAtt "CreateOauthTokenFunction.Arn"
+  #     Principal: "apigateway.amazonaws.com"
+  #     SourceArn: !Sub "arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${ApiGateway}/*/POST/"

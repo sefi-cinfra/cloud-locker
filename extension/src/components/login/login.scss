@@ -1,0 +1,44 @@
+
+@import "../../colors.scss";
+
+.login-form{
+    min-height:400px;
+    min-width: 400px;
+    display: -webkit-box;
+    display: -moz-box;
+    display: -ms-flexbox;
+    display: -webkit-flex;
+    display: flex;
+    justify-content: center;
+
+    .form-box{
+        flex-direction: column;
+        margin-top:30px;
+
+        .form-input{
+            margin-top:10px;
+        }
+
+        .form-button{
+            display: flex;
+            justify-content: center;
+            margin-top: 30px;
+        }
+
+        .error-message-box{
+            display: flex;
+            color: $red-warning;
+            margin-top: 20px;
+
+            .icon{
+                margin: 0;
+            }
+
+            .message{
+                margin-top: 0;
+                margin-left: 8px;
+                max-width:200px;
+            }
+        }
+    }
+}
